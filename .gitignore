@@ -1,0 +1,8 @@
+autom4te.cache/
+ref/.deps/
+ref/Makefile.in
+*.bak
+*.o
+*.mod
+ref/miniGhost.x
+stamp-h1
