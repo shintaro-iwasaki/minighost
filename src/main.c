@@ -237,7 +237,6 @@ int main ( int argc, char* argv[] )
                     } else {
                         target_shep = 0;
                     }
- 		    fprintf(stderr, "spawning %d\n", compute_block);
                     qthread_spawn ( compute_block, 
                             &compute_block_args, 
                             sizeof(compute_block_args_t), 

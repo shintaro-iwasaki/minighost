@@ -118,7 +118,7 @@
 #endif
 
 #if defined _MG_QT
-#  include "qthread.h"
+#  include "qthread/qthread.h"
 #  include "qthread/sinc.h"
 #  define mg_get_os_thread_num() qthread_readstate(CURRENT_UNIQUE_WORKER)
 #  define mg_get_num_os_threads() qthread_readstate(ACTIVE_WORKERS)
@@ -135,7 +135,7 @@
 #endif /* defined _MG_QT */
 
 #if defined _MG_MPI
-#include "mpi.h"
+#include <mpi.h>
 #endif
 
 #if defined _USE_PAT_API

@@ -12,7 +12,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/include
 $(qthreadlib):
 	$(MAKE) -C $(top_builddir)/src libqthread.la
 
-CC=mpicc
+#CC=mpicc
 
 bin_PROGRAMS = minighost
 
