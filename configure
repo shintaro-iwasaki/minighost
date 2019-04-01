@@ -678,6 +678,12 @@ ac_user_opts='
 enable_option_checking
 enable_silent_rules
 enable_dependency_tracking
+with_mpi
+enable_debug
+enable_qthreads_profiling
+with_timing
+enable_craypat_api
+with_runtime
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1309,6 +1315,18 @@ Optional Features:
                           do not reject slow dependency extractors
   --disable-dependency-tracking
                           speeds up one-time build
+  --enable-debug          Enable Minighost debug options
+  --enable-qthreads-profiling
+                          Enable Qthreads profiling
+  --enable-craypat-api    Enable craypat api profiling
+
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-mpi              choose which mpi implementation to use (mpi, mpiq)
+  --with-timing           choose which timing method to use (l0, l1)
+  --with-runtime          choose which runtime to use (serial, openmp,
+                          qthreads, argobots)
 
 Some influential environment variables:
   CC          C compiler command
@@ -3687,9 +3705,135 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
+
+
+# Check whether --with-mpi was given.
+if test "${with_mpi+set}" = set; then :
+  withval=$with_mpi;
+fi
+
+
+if test "x$with_mpi" != "x"; then :
+  case "$with_mpi" in
+       mpi)
+
+$as_echo "#define _MG_MPI 1" >>confdefs.h
+
+        ;;
+       mpiq)
+
+$as_echo "#define _MG_MPI 1" >>confdefs.h
+
+
+$as_echo "#define _MG_MPIQ 1" >>confdefs.h
+
+        ;;
+       *)
+        as_fn_error $? "Unknown MPI type" "$LINENO" 5
+        ;;
+       esac
+fi
+
+# Check whether --enable-debug was given.
+if test "${enable_debug+set}" = set; then :
+  enableval=$enable_debug;
+fi
+
+
+if test "x$enable_debug" = "xyes"; then :
+
+$as_echo "#define _MG_DEBUG 1" >>confdefs.h
+
+fi
+
+# Check whether --enable-qthreads-profiling was given.
+if test "${enable_qthreads_profiling+set}" = set; then :
+  enableval=$enable_qthreads_profiling;
+fi
+
+
+if test "x$enable_qthreads_profiling" = "xyes"; then :
+
+$as_echo "#define _MG_QT_PROFILE 1" >>confdefs.h
+
+fi
+
+
+# Check whether --with-timing was given.
+if test "${with_timing+set}" = set; then :
+  withval=$with_timing;
+fi
+
+
+if test "x$with_timing" != "x"; then :
+  case "$with_timing" in
+l0)
+
+$as_echo "#define _MG_TIMING_L0 1" >>confdefs.h
+
+;;
+l1)
+
+$as_echo "#define _MG_TIMING_L1 1" >>confdefs.h
+
+;;
+*)
+as_fn_error $? "Unknown timing type" "$LINENO" 5
+;;
+esac
+fi
+
+# Check whether --enable-craypat-api was given.
+if test "${enable_craypat_api+set}" = set; then :
+  enableval=$enable_craypat_api;
+fi
+
+
+if test "x$enable_qthreads_profiling" = "xyes"; then :
+
+$as_echo "#define _USE_PAT_API 1" >>confdefs.h
+
+fi
+
+
+# Check whether --with-runtime was given.
+if test "${with_runtime+set}" = set; then :
+  withval=$with_runtime;
+fi
+
+
+if test "x$with_runtime" != "x"; then :
+  case "$with_timing" in
+serial)
+
+$as_echo "#define _MG_SERIAL 1" >>confdefs.h
+
+;;
+openmp)
+
+$as_echo "#define _MG_OPENMP 1" >>confdefs.h
+
+;;
+qthreads)
+
+$as_echo "#define _MG_QT 1" >>confdefs.h
+
+;;
+argobots)
+
+$as_echo "#define _MG_ARGOBOTS 1" >>confdefs.h
+
+;;
+
+*)
+as_fn_error $? "Unknown timing type" "$LINENO" 5
+;;
+esac
+fi
+
 ac_config_headers="$ac_config_headers config.h"
 
-ac_config_files="$ac_config_files Makefile ref/Makefile"
+ac_config_files="$ac_config_files Makefile ref/Makefile src/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4420,6 +4564,7 @@ do
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "ref/Makefile") CONFIG_FILES="$CONFIG_FILES ref/Makefile" ;;
+    "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

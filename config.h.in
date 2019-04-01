@@ -23,3 +23,36 @@
 
 /* Version number of package */
 #undef VERSION
+
+/* Defined to use Argobots runtime */
+#undef _MG_ARGOBOTS
+
+/* Defined if debug support is enabled */
+#undef _MG_DEBUG
+
+/* Defined to use MPI with MPIQ */
+#undef _MG_MPI
+
+/* Defined to use experimental MPIQ macros from qthreads */
+#undef _MG_MPIQ
+
+/* Defined to use OpenMP runtime */
+#undef _MG_OPENMP
+
+/* Defined to use Qthreads runtime */
+#undef _MG_QT
+
+/* Defined if Qthreads profiling support is enabled */
+#undef _MG_QT_PROFILE
+
+/* Defined to execute serially */
+#undef _MG_SERIAL
+
+/* Defined to measure high level timings */
+#undef _MG_TIMING_L0
+
+/* Defined to measure low level timings */
+#undef _MG_TIMING_L1
+
+/* Defined if CrayPat API support is enabled */
+#undef _USE_PAT_API
