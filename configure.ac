@@ -89,7 +89,7 @@ AC_MSG_ERROR([Unknown runtime])
 AC_CONFIG_HEADERS([config.h])
 	AC_CONFIG_FILES([
 			Makefile
-			ref/Makefile
 			src/Makefile
 			])
+			#ref/Makefile
 	AC_OUTPUT
