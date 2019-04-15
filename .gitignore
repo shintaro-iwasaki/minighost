@@ -1,7 +1,9 @@
 src/minighost
 ref/miniGhost.x
 config.h
+configure
 Makefile
+Makefile.in
 *.dSYM/
 *.deps/
 # http://www.gnu.org/software/automake
