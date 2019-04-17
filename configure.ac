@@ -16,6 +16,7 @@ AS_IF([test "x$with_mpi" != "x"],
 	mpiq)
 		AC_DEFINE([_MG_MPI], [1], [Defined to use MPI with MPIQ])
 		AC_DEFINE([_MG_MPIQ], [1], [Defined to use experimental MPIQ macros from qthreads])
+	        AC_CHECK_LIB([qthread_mpiq],[MPIQ_Init],[],AC_MSG_ERROR([unable to find MPIQ library]))
 		;;
 	*)
 		AC_MSG_ERROR([Unknown MPI type])
@@ -92,4 +93,5 @@ AC_CONFIG_HEADERS([config.h])
 			src/Makefile
 			])
 			#ref/Makefile
-	AC_OUTPUT
+AC_OUTPUT
+
