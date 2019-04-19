@@ -58,7 +58,7 @@ AC_ARG_ENABLE([craypat-api],
 		[AS_HELP_STRING([--enable-craypat-api],
 			[Enable craypat api profiling])])
 
-	AS_IF([test "x$enable_qthreads_profiling" = "xyes"],
+	AS_IF([test "x$enable_craypat_api" = "xyes"],
 			[AC_DEFINE([_USE_PAT_API], [1], [Defined if CrayPat API support is enabled])])
 
 AC_ARG_WITH([runtime],
