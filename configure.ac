@@ -59,7 +59,10 @@ AC_ARG_ENABLE([craypat-api],
 			[Enable craypat api profiling])])
 
 	AS_IF([test "x$enable_craypat_api" = "xyes"],
-			[AC_DEFINE([_USE_PAT_API], [1], [Defined if CrayPat API support is enabled])])
+			[AC_DEFINE([_USE_PAT_API], [1], [Defined if CrayPat API support is enabled])
+			AC_CHECK_HEADER([pat_api.h],[],AC_MSG_ERROR([unable to find Cray PAT API header file]))
+			AC_CHECK_LIB([_pat_base],[PAT_region_begin],[],AC_MSG_ERROR([unable to find Cray PAT library]))
+])
 
 AC_ARG_WITH([runtime],
 		[AS_HELP_STRING([--with-runtime],
