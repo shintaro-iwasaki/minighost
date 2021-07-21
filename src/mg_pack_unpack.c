@@ -28,9 +28,9 @@
 #include "mg.h"
 #include "mg_traverse.h"
 
-#define MG_PACK_BUFFER_WRAPPER(p_params, p_blk, is, ie, js, je, ks, ke,        \
-                               is_halo, ie_halo, js_halo, je_halo, ks_halo,    \
-                               ke_halo, comm_index, neighbor_flag, grid)       \
+#define MG_PACK_BUFFER_WRAPPER(p_params, is, ie, js, je, ks, ke, is_halo,      \
+                               ie_halo, js_halo, je_halo, ks_halo, ke_halo,    \
+                               comm_index, neighbor_flag, p_blk, grid)         \
     do {                                                                       \
         if (ks == ke && js == je) {                                            \
             const int send_comm_index = comm_index;                            \
@@ -67,8 +67,10 @@ static inline void MG_Pack_buffer_impl(const Params *p_params_arg,
                                        MG_REAL *grid_arg, BlockInfo *p_blk_arg,
                                        int is_unpack_arg)
 {
-    MG_TRAVERSE_NEIGHBORS(p_params_arg, p_blk_arg, MG_PACK_BUFFER_WRAPPER,
-                          grid_arg);
+    MG_TRAVERSE(p_blk_arg->neighbor_flag, p_params_arg, p_blk_arg->xstart,
+                p_blk_arg->xend, p_blk_arg->ystart, p_blk_arg->yend,
+                p_blk_arg->zstart, p_blk_arg->zend, MG_PACK_BUFFER_WRAPPER,
+                p_blk_arg, grid_arg);
 }
 
 void MG_Pack_buffer(const Params *p_params, MG_REAL *grid, BlockInfo *p_blk)
@@ -76,9 +78,9 @@ void MG_Pack_buffer(const Params *p_params, MG_REAL *grid, BlockInfo *p_blk)
     MG_Pack_buffer_impl(p_params, grid, p_blk, 0);
 }
 
-#define MG_UNPACK_BUFFER_WRAPPER(p_params, p_blk, is, ie, js, je, ks, ke,      \
-                                 is_halo, ie_halo, js_halo, je_halo, ks_halo,  \
-                                 ke_halo, comm_index, neighbor_flag, grid)     \
+#define MG_UNPACK_BUFFER_WRAPPER(p_params, is, ie, js, je, ks, ke, is_halo,    \
+                                 ie_halo, js_halo, je_halo, ks_halo, ke_halo,  \
+                                 comm_index, neighbor_flag, p_blk, grid)       \
     do {                                                                       \
         if (ks == ke && js == je) {                                            \
             /* Do nothing since the data is directly set. */                   \
@@ -107,11 +109,77 @@ static inline void MG_Unpack_buffer_impl(const Params *p_params_arg,
                                          BlockInfo *p_blk_arg,
                                          int is_unpack_arg)
 {
-    MG_TRAVERSE_NEIGHBORS(p_params_arg, p_blk_arg, MG_UNPACK_BUFFER_WRAPPER,
-                          grid_arg);
+    MG_TRAVERSE(p_blk_arg->neighbor_flag, p_params_arg, p_blk_arg->xstart,
+                p_blk_arg->xend, p_blk_arg->ystart, p_blk_arg->yend,
+                p_blk_arg->zstart, p_blk_arg->zend, MG_UNPACK_BUFFER_WRAPPER,
+                p_blk_arg, grid_arg);
 }
 
 void MG_Unpack_buffer(const Params *p_params, MG_REAL *grid, BlockInfo *p_blk)
 {
     MG_Unpack_buffer_impl(p_params, grid, p_blk, 1);
+}
+
+#define MG_WRAPAROUND_KERNEL(p_params, is, ie, js, je, ks, ke, is_halo,        \
+                             ie_halo, js_halo, je_halo, ks_halo, ke_halo,      \
+                             comm_index, neighbor_flag, nx, ny, nz, grid)      \
+    do {                                                                       \
+        MG_REAL *restrict _grid = (grid);                                      \
+        const int _nx = (nx);                                                  \
+        const int _ny = (ny);                                                  \
+        const int _nz = (nz);                                                  \
+        for (int k = ks, _ke = ke; k <= _ke; k++) {                            \
+            int k_to = k;                                                      \
+            if (neighbor_flag & NEIGHBOR_ANY_Z0) {                             \
+                k_to = _nz + 1;                                                \
+            } else if (neighbor_flag & NEIGHBOR_ANY_ZN) {                      \
+                k_to = 0;                                                      \
+            }                                                                  \
+            for (int j = js, _je = je; j <= _je; j++) {                        \
+                int j_to = j;                                                  \
+                if (neighbor_flag & NEIGHBOR_ANY_Y0) {                         \
+                    j_to = _ny + 1;                                            \
+                } else if (neighbor_flag & NEIGHBOR_ANY_YN) {                  \
+                    j_to = 0;                                                  \
+                }                                                              \
+                for (int i = is, _ie = ie; i <= _ie; i++) {                    \
+                    int i_to = i;                                              \
+                    if (neighbor_flag & NEIGHBOR_ANY_X0) {                     \
+                        i_to = _nx + 1;                                        \
+                    } else if (neighbor_flag & NEIGHBOR_ANY_XN) {              \
+                        i_to = 0;                                              \
+                    }                                                          \
+                    _grid[MG_ARRAY_INDEX(i_to, j_to, k_to, nx, ny)] =          \
+                        _grid[MG_ARRAY_INDEX(i, j, k, nx, ny)];                \
+                }                                                              \
+            }                                                                  \
+        }                                                                      \
+    } while (0)
+
+static void MG_Wraparound_impl(const Params *p_params_arg,
+                               int wraparound_flag_arg,
+                               MG_REAL *restrict grid_arg, int nx_arg,
+                               int ny_arg, int nz_arg, int xstart_arg,
+                               int xend_arg, int ystart_arg, int yend_arg,
+                               int zstart_arg, int zend_arg)
+{
+    MG_TRAVERSE(wraparound_flag_arg, p_params_arg, xstart_arg, xend_arg,
+                ystart_arg, yend_arg, zstart_arg, zend_arg,
+                MG_WRAPAROUND_KERNEL, nx_arg, ny_arg, nz_arg, grid_arg);
+}
+
+void MG_Wraparound(const Params *p_params, int wraparound_flag,
+                   MG_REAL *restrict grid, int nx, int ny, int nz, int xstart,
+                   int xend, int ystart, int yend, int zstart, int zend)
+{
+    MG_Wraparound_impl(p_params, wraparound_flag, grid, nx, ny, nz, xstart,
+                       xend, ystart, yend, zstart, zend);
+}
+
+void MG_Wraparound_blk(const Params *p_params, const BlockInfo *p_blk,
+                       MG_REAL *restrict grid)
+{
+    MG_Wraparound_impl(p_params, p_blk->wraparound_flag, grid, p_params->nx,
+                       p_params->ny, p_params->nz, p_blk->xstart, p_blk->xend,
+                       p_blk->ystart, p_blk->yend, p_blk->zstart, p_blk->zend);
 }

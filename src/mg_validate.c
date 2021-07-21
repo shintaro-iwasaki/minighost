@@ -194,37 +194,52 @@ static void validate_print(const Params *p_params, const GridInfo *p_grid,
         if (rank != p_params->rank) {
             continue;
         }
-        MG_REAL *grid_vals;
-        if (step % 2) {
-            grid_vals = p_grid->values2;
-        } else {
-            grid_vals = p_grid->values1;
-        }
-        // Compare values.
-        const int nx = p_params->nx;
-        const int ny = p_params->ny;
-        const int nz = p_params->nz;
+        for (int is_new = 0; is_new <= 1; is_new++) {
+            MG_REAL *grid_vals;
+            if ((step + is_new) % 2) {
+                grid_vals = p_grid->values1;
+            } else {
+                grid_vals = p_grid->values2;
+            }
+            // Compare values.
+            const int nx = p_params->nx;
+            const int ny = p_params->ny;
+            const int nz = p_params->nz;
 
-        fprintf(stdout, "rank = %d\n", rank);
-        for (int k = 1; k <= nz; k++) {
-            if (nz != 1) {
-                fprintf(stdout, "  k = %d\n", k);
-            }
-            for (int j = 1; j <= ny; j++) {
-                fprintf(stdout, "   ");
-                for (int i = 1; i <= nx; i++) {
-                    const MG_REAL val =
-                        grid_vals[MG_ARRAY_INDEX(i, j, k, nx, ny)];
-                    // It looks like:
-                    // "-1.9e+07"
-                    // " 7.2e+00"
-                    fprintf(stdout, " % 1.2e", val);
+            fprintf(stdout, "[%d | %s] rank = %d\n", step,
+                    (is_new ? "new" : "old"), rank);
+            int k_from = (p_params->stencil == MG_STENCIL_2D5PT ||
+                          p_params->stencil == MG_STENCIL_2D9PT || is_new)
+                             ? 1
+                             : 0;
+            int k_to = (p_params->stencil == MG_STENCIL_2D5PT ||
+                        p_params->stencil == MG_STENCIL_2D9PT || is_new)
+                           ? nz
+                           : (nz + 1);
+            for (int k = k_from; k <= k_to; k++) {
+                if (nz != 1) {
+                    fprintf(stdout, "  k = %d\n", k);
                 }
-                fprintf(stdout, "\n");
+                int j_from = is_new ? 1 : 0;
+                int j_to = is_new ? ny : (ny + 1);
+                for (int j = j_from; j <= j_to; j++) {
+                    fprintf(stdout, "   ");
+                    int i_from = is_new ? 1 : 0;
+                    int i_to = is_new ? nx : (nx + 1);
+                    for (int i = i_from; i <= i_to; i++) {
+                        const MG_REAL val =
+                            grid_vals[MG_ARRAY_INDEX(i, j, k, nx, ny)];
+                        // It looks like:
+                        // "-1.9e+07"
+                        // " 7.2e+00"
+                        fprintf(stdout, " % 1.2e", val);
+                    }
+                    fprintf(stdout, "\n");
+                }
             }
+            fprintf(stdout, "\n");
+            fflush(NULL);
         }
-        fprintf(stdout, "\n");
-        fflush(NULL);
     }
     err = MPI_Barrier(MPI_COMM_WORLD);
     MG_Assert(err == MPI_SUCCESS);

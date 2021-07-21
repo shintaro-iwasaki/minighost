@@ -107,6 +107,7 @@ static void setup_input_params(int argc, char *argv[], Params *p_params)
     p_params->comm_strategy = 1;
 
     p_params->stencil = MG_STENCIL_2D5PT;
+    p_params->bc_periodic = 0;
     p_params->numvars = 1;
     p_params->numtsteps = 10;
     p_params->exec_type = MG_EXEC_TYPE_NORMAL;
@@ -144,15 +145,15 @@ static void setup_input_params(int argc, char *argv[], Params *p_params)
         } else if (!strcmp(argv[i], "--stencil")) {
             char stencil_s[128];
             strcpy(stencil_s, argv[++i]);
-            if (strcmp(stencil_s, "MG_STENCIL_2D5PT") == 0)
+            if (strcmp(stencil_s, "MG_STENCIL_2D5PT") == 0) {
                 p_params->stencil = MG_STENCIL_2D5PT;
-            else if (strcmp(stencil_s, "MG_STENCIL_2D9PT") == 0)
+            } else if (strcmp(stencil_s, "MG_STENCIL_2D9PT") == 0) {
                 p_params->stencil = MG_STENCIL_2D9PT;
-            else if (strcmp(stencil_s, "MG_STENCIL_3D7PT") == 0)
+            } else if (strcmp(stencil_s, "MG_STENCIL_3D7PT") == 0) {
                 p_params->stencil = MG_STENCIL_3D7PT;
-            else if (strcmp(stencil_s, "MG_STENCIL_3D27PT") == 0)
+            } else if (strcmp(stencil_s, "MG_STENCIL_3D27PT") == 0) {
                 p_params->stencil = MG_STENCIL_3D27PT;
-            else {
+            } else {
                 MG_Error("Unknown stencil option");
             }
         } else if (!strcmp(argv[i], "--error_tol")) {
@@ -170,6 +171,16 @@ static void setup_input_params(int argc, char *argv[], Params *p_params)
         } else if (!strcmp(argv[i], "--help")) {
             print_help_message();
             MG_Error("Printed help messages");
+        } else if (!strcmp(argv[i], "--boundary_condition")) {
+            char boundary_condition_s[128];
+            strcpy(boundary_condition_s, argv[++i]);
+            if (strcmp(boundary_condition_s, "MG_BC_DIRICHLET") == 0) {
+                p_params->bc_periodic = 0;
+            } else if (strcmp(boundary_condition_s, "MG_BC_PERIODIC") == 0) {
+                p_params->bc_periodic = 1;
+            } else {
+                MG_Error("Unknown boundary condition");
+            }
         } else {
             // Illegal or deprecated parameters.
             MG_Assert(strcmp(argv[i], "--scaling"));
@@ -179,10 +190,7 @@ static void setup_input_params(int argc, char *argv[], Params *p_params)
             MG_Assert(strcmp(argv[i], "--blkxyzlen"));
             MG_Assert(strcmp(argv[i], "--ndim"));
             MG_Assert(strcmp(argv[i], "--npdim"));
-            if (!strcmp(argv[i], "--boundary_condition")) {
-                MG_Assert(strcmp(argv[i + 1], "MG_BC_DIRICHLET") == 0);
-                i++;
-            } else if (!strcmp(argv[i], "--comm_method")) {
+            if (!strcmp(argv[i], "--comm_method")) {
                 MG_Assert(strcmp(argv[i + 1], "MG_COMM_METHOD_TASK_BLOCKS") ==
                           0);
                 i++;
@@ -241,8 +249,7 @@ static void setup_input_params(int argc, char *argv[], Params *p_params)
 
 static void print_help_message(void)
 {
-    fprintf(stderr, "\n");
-    fprintf(stderr, "\n (Optional) command line input is of the form: \n");
+    fprintf(stderr, "Command line input is of the form: \n");
     fprintf(stderr, "\n");
 
     fprintf(stderr, " --nx  ( > 0 )\n");
@@ -265,7 +272,10 @@ static void print_help_message(void)
     fprintf(stderr, " --comm_strategy\n");
     fprintf(stderr, "\n");
 
-    fprintf(stderr, " --stencil \n");
+    fprintf(stderr,
+            " --boundary_condition (MG_BC_DIRICHLET, MG_BC_PERIODIC)\n");
+    fprintf(stderr, " --stencil (MG_STENCIL_2D5PT, MG_STENCIL_2D9PT, "
+                    "MG_STENCIL_3D7PT, MG_STENCIL_3D27PT)\n");
     fprintf(stderr, " --numvars (0 < numvars <= 40)\n");
     fprintf(stderr, " --numtsteps ( > 0 )\n");
     fprintf(stderr, "\n");

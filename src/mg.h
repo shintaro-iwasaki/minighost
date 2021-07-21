@@ -128,6 +128,19 @@ static inline uint32_t MG_fast_rand32(uint32_t *p_seed)
     return seed;
 }
 
+void MG_Assert_impl(const char *cond, const char *file, int line);
+void MG_Error_impl(const char *error_msg, const char *file, int line);
+#define MG_Error(_error_msg)                                                   \
+    do {                                                                       \
+        MG_Error_impl(_error_msg, __FILE__, __LINE__);                         \
+    } while (0)
+#define MG_Assert(_cond)                                                       \
+    do {                                                                       \
+        if (!(_cond)) {                                                        \
+            MG_Assert_impl(#_cond, __FILE__, __LINE__);                        \
+        }                                                                      \
+    } while (0)
+
 #define GRID_INIT_VAL 0.0
 
 #if defined _MG_DOUBLE
@@ -158,54 +171,232 @@ typedef float MG_REAL;
 #define BOUNDARY_YN 0x08
 #define BOUNDARY_Z0 0x10
 #define BOUNDARY_ZN 0x20
+#define BOUNDARY_ALL                                                           \
+    (BOUNDARY_X0 | BOUNDARY_XN | BOUNDARY_Y0 | BOUNDARY_YN | BOUNDARY_Z0 |     \
+     BOUNDARY_ZN)
+
 // Faces
-#define NEIGHBOR_X0 (BOUNDARY_X0)
-#define NEIGHBOR_XN (BOUNDARY_XN)
-#define NEIGHBOR_Y0 (BOUNDARY_Y0)
-#define NEIGHBOR_YN (BOUNDARY_YN)
-#define NEIGHBOR_Z0 (BOUNDARY_Z0)
-#define NEIGHBOR_ZN (BOUNDARY_ZN)
+#define NEIGHBOR_X0 (1 << 0)
+#define NEIGHBOR_XN (1 << 1)
+#define NEIGHBOR_Y0 (1 << 2)
+#define NEIGHBOR_YN (1 << 3)
+#define NEIGHBOR_Z0 (1 << 4)
+#define NEIGHBOR_ZN (1 << 5)
 // Lines
-#define NEIGHBOR_X0Y0 (BOUNDARY_X0 | BOUNDARY_Y0)
-#define NEIGHBOR_X0YN (BOUNDARY_X0 | BOUNDARY_YN)
-#define NEIGHBOR_XNY0 (BOUNDARY_XN | BOUNDARY_Y0)
-#define NEIGHBOR_XNYN (BOUNDARY_XN | BOUNDARY_YN)
-#define NEIGHBOR_Y0Z0 (BOUNDARY_Y0 | BOUNDARY_Z0)
-#define NEIGHBOR_Y0ZN (BOUNDARY_Y0 | BOUNDARY_ZN)
-#define NEIGHBOR_YNZ0 (BOUNDARY_YN | BOUNDARY_Z0)
-#define NEIGHBOR_YNZN (BOUNDARY_YN | BOUNDARY_ZN)
-#define NEIGHBOR_Z0X0 (BOUNDARY_Z0 | BOUNDARY_X0)
-#define NEIGHBOR_Z0XN (BOUNDARY_Z0 | BOUNDARY_XN)
-#define NEIGHBOR_ZNX0 (BOUNDARY_ZN | BOUNDARY_X0)
-#define NEIGHBOR_ZNXN (BOUNDARY_ZN | BOUNDARY_XN)
+#define NEIGHBOR_X0Y0 (1 << 6)
+#define NEIGHBOR_X0YN (1 << 7)
+#define NEIGHBOR_XNY0 (1 << 8)
+#define NEIGHBOR_XNYN (1 << 9)
+#define NEIGHBOR_Y0Z0 (1 << 10)
+#define NEIGHBOR_Y0ZN (1 << 11)
+#define NEIGHBOR_YNZ0 (1 << 12)
+#define NEIGHBOR_YNZN (1 << 13)
+#define NEIGHBOR_Z0X0 (1 << 14)
+#define NEIGHBOR_Z0XN (1 << 15)
+#define NEIGHBOR_ZNX0 (1 << 16)
+#define NEIGHBOR_ZNXN (1 << 17)
 // Points
-#define NEIGHBOR_X0Y0Z0 (BOUNDARY_X0 | BOUNDARY_Y0 | BOUNDARY_Z0)
-#define NEIGHBOR_X0Y0ZN (BOUNDARY_X0 | BOUNDARY_Y0 | BOUNDARY_ZN)
-#define NEIGHBOR_X0YNZ0 (BOUNDARY_X0 | BOUNDARY_YN | BOUNDARY_Z0)
-#define NEIGHBOR_X0YNZN (BOUNDARY_X0 | BOUNDARY_YN | BOUNDARY_ZN)
-#define NEIGHBOR_XNY0Z0 (BOUNDARY_XN | BOUNDARY_Y0 | BOUNDARY_Z0)
-#define NEIGHBOR_XNY0ZN (BOUNDARY_XN | BOUNDARY_Y0 | BOUNDARY_ZN)
-#define NEIGHBOR_XNYNZ0 (BOUNDARY_XN | BOUNDARY_YN | BOUNDARY_Z0)
-#define NEIGHBOR_XNYNZN (BOUNDARY_XN | BOUNDARY_YN | BOUNDARY_ZN)
+#define NEIGHBOR_X0Y0Z0 (1 << 18)
+#define NEIGHBOR_X0Y0ZN (1 << 19)
+#define NEIGHBOR_X0YNZ0 (1 << 20)
+#define NEIGHBOR_X0YNZN (1 << 21)
+#define NEIGHBOR_XNY0Z0 (1 << 22)
+#define NEIGHBOR_XNY0ZN (1 << 23)
+#define NEIGHBOR_XNYNZ0 (1 << 24)
+#define NEIGHBOR_XNYNZN (1 << 25)
+#define NEIGHBOR_ALL ((1 << 26) - 1)
+
+#define NEIGHBOR_ANY_X0                                                        \
+    (NEIGHBOR_X0 | NEIGHBOR_X0Y0 | NEIGHBOR_X0YN | NEIGHBOR_Z0X0 |             \
+     NEIGHBOR_ZNX0 | NEIGHBOR_X0Y0Z0 | NEIGHBOR_X0Y0ZN | NEIGHBOR_X0YNZ0 |     \
+     NEIGHBOR_X0YNZN)
+#define NEIGHBOR_ANY_XN                                                        \
+    (NEIGHBOR_XN | NEIGHBOR_XNY0 | NEIGHBOR_XNYN | NEIGHBOR_Z0XN |             \
+     NEIGHBOR_ZNXN | NEIGHBOR_XNY0Z0 | NEIGHBOR_XNY0ZN | NEIGHBOR_XNYNZ0 |     \
+     NEIGHBOR_XNYNZN)
+#define NEIGHBOR_ANY_Y0                                                        \
+    (NEIGHBOR_Y0 | NEIGHBOR_X0Y0 | NEIGHBOR_XNY0 | NEIGHBOR_Y0Z0 |             \
+     NEIGHBOR_Y0ZN | NEIGHBOR_X0Y0Z0 | NEIGHBOR_X0Y0ZN | NEIGHBOR_XNY0Z0 |     \
+     NEIGHBOR_XNY0ZN)
+#define NEIGHBOR_ANY_YN                                                        \
+    (NEIGHBOR_YN | NEIGHBOR_X0YN | NEIGHBOR_XNYN | NEIGHBOR_YNZ0 |             \
+     NEIGHBOR_YNZN | NEIGHBOR_X0YNZ0 | NEIGHBOR_X0YNZN | NEIGHBOR_XNYNZ0 |     \
+     NEIGHBOR_XNYNZN)
+#define NEIGHBOR_ANY_Z0                                                        \
+    (NEIGHBOR_Z0 | NEIGHBOR_Y0Z0 | NEIGHBOR_YNZ0 | NEIGHBOR_Z0X0 |             \
+     NEIGHBOR_Z0XN | NEIGHBOR_X0Y0Z0 | NEIGHBOR_X0YNZ0 | NEIGHBOR_XNY0Z0 |     \
+     NEIGHBOR_XNYNZ0)
+#define NEIGHBOR_ANY_ZN                                                        \
+    (NEIGHBOR_ZN | NEIGHBOR_Y0ZN | NEIGHBOR_YNZN | NEIGHBOR_ZNX0 |             \
+     NEIGHBOR_ZNXN | NEIGHBOR_X0Y0ZN | NEIGHBOR_X0YNZN | NEIGHBOR_XNY0ZN |     \
+     NEIGHBOR_XNYNZN)
+
+static inline int MG_boundary_to_neighbors(int boundary_flag,
+                                           int check_diagonal)
+{
+    int neighbor_flag = 0;
+    if (boundary_flag & BOUNDARY_X0)
+        neighbor_flag |= NEIGHBOR_X0;
+    if (boundary_flag & BOUNDARY_XN)
+        neighbor_flag |= NEIGHBOR_XN;
+    if (boundary_flag & BOUNDARY_Y0)
+        neighbor_flag |= NEIGHBOR_Y0;
+    if (boundary_flag & BOUNDARY_YN)
+        neighbor_flag |= NEIGHBOR_YN;
+    if (boundary_flag & BOUNDARY_Z0)
+        neighbor_flag |= NEIGHBOR_Z0;
+    if (boundary_flag & BOUNDARY_ZN)
+        neighbor_flag |= NEIGHBOR_ZN;
+    if (check_diagonal) {
+        if ((boundary_flag & BOUNDARY_X0) && (boundary_flag & BOUNDARY_Y0))
+            neighbor_flag |= NEIGHBOR_X0Y0;
+        if ((boundary_flag & BOUNDARY_X0) && (boundary_flag & BOUNDARY_YN))
+            neighbor_flag |= NEIGHBOR_X0YN;
+        if ((boundary_flag & BOUNDARY_XN) && (boundary_flag & BOUNDARY_Y0))
+            neighbor_flag |= NEIGHBOR_XNY0;
+        if ((boundary_flag & BOUNDARY_XN) && (boundary_flag & BOUNDARY_YN))
+            neighbor_flag |= NEIGHBOR_XNYN;
+        if ((boundary_flag & BOUNDARY_Y0) && (boundary_flag & BOUNDARY_Z0))
+            neighbor_flag |= NEIGHBOR_Y0Z0;
+        if ((boundary_flag & BOUNDARY_Y0) && (boundary_flag & BOUNDARY_ZN))
+            neighbor_flag |= NEIGHBOR_Y0ZN;
+        if ((boundary_flag & BOUNDARY_YN) && (boundary_flag & BOUNDARY_Z0))
+            neighbor_flag |= NEIGHBOR_YNZ0;
+        if ((boundary_flag & BOUNDARY_YN) && (boundary_flag & BOUNDARY_ZN))
+            neighbor_flag |= NEIGHBOR_YNZN;
+        if ((boundary_flag & BOUNDARY_Z0) && (boundary_flag & BOUNDARY_X0))
+            neighbor_flag |= NEIGHBOR_Z0X0;
+        if ((boundary_flag & BOUNDARY_Z0) && (boundary_flag & BOUNDARY_XN))
+            neighbor_flag |= NEIGHBOR_Z0XN;
+        if ((boundary_flag & BOUNDARY_ZN) && (boundary_flag & BOUNDARY_X0))
+            neighbor_flag |= NEIGHBOR_ZNX0;
+        if ((boundary_flag & BOUNDARY_ZN) && (boundary_flag & BOUNDARY_XN))
+            neighbor_flag |= NEIGHBOR_ZNXN;
+        if ((boundary_flag & BOUNDARY_X0) && (boundary_flag & BOUNDARY_Y0) &&
+            (boundary_flag & BOUNDARY_Z0))
+            neighbor_flag |= NEIGHBOR_X0Y0Z0;
+        if ((boundary_flag & BOUNDARY_X0) && (boundary_flag & BOUNDARY_Y0) &&
+            (boundary_flag & BOUNDARY_ZN))
+            neighbor_flag |= NEIGHBOR_X0Y0ZN;
+        if ((boundary_flag & BOUNDARY_X0) && (boundary_flag & BOUNDARY_YN) &&
+            (boundary_flag & BOUNDARY_Z0))
+            neighbor_flag |= NEIGHBOR_X0YNZ0;
+        if ((boundary_flag & BOUNDARY_X0) && (boundary_flag & BOUNDARY_YN) &&
+            (boundary_flag & BOUNDARY_ZN))
+            neighbor_flag |= NEIGHBOR_X0YNZN;
+        if ((boundary_flag & BOUNDARY_XN) && (boundary_flag & BOUNDARY_Y0) &&
+            (boundary_flag & BOUNDARY_Z0))
+            neighbor_flag |= NEIGHBOR_XNY0Z0;
+        if ((boundary_flag & BOUNDARY_XN) && (boundary_flag & BOUNDARY_Y0) &&
+            (boundary_flag & BOUNDARY_ZN))
+            neighbor_flag |= NEIGHBOR_XNY0ZN;
+        if ((boundary_flag & BOUNDARY_XN) && (boundary_flag & BOUNDARY_YN) &&
+            (boundary_flag & BOUNDARY_Z0))
+            neighbor_flag |= NEIGHBOR_XNYNZ0;
+        if ((boundary_flag & BOUNDARY_XN) && (boundary_flag & BOUNDARY_YN) &&
+            (boundary_flag & BOUNDARY_ZN))
+            neighbor_flag |= NEIGHBOR_XNYNZN;
+    }
+    return neighbor_flag;
+}
+
+static inline int MG_neighbor_to_boundary(int neighbor_flag)
+{
+    switch (neighbor_flag) {
+        case NEIGHBOR_X0:
+            return (BOUNDARY_X0);
+        case NEIGHBOR_XN:
+            return (BOUNDARY_XN);
+        case NEIGHBOR_Y0:
+            return (BOUNDARY_Y0);
+        case NEIGHBOR_YN:
+            return (BOUNDARY_YN);
+        case NEIGHBOR_Z0:
+            return (BOUNDARY_Z0);
+        case NEIGHBOR_ZN:
+            return (BOUNDARY_ZN);
+        case NEIGHBOR_X0Y0:
+            return (BOUNDARY_X0 | BOUNDARY_Y0);
+        case NEIGHBOR_X0YN:
+            return (BOUNDARY_X0 | BOUNDARY_YN);
+        case NEIGHBOR_XNY0:
+            return (BOUNDARY_XN | BOUNDARY_Y0);
+        case NEIGHBOR_XNYN:
+            return (BOUNDARY_XN | BOUNDARY_YN);
+        case NEIGHBOR_Y0Z0:
+            return (BOUNDARY_Y0 | BOUNDARY_Z0);
+        case NEIGHBOR_Y0ZN:
+            return (BOUNDARY_Y0 | BOUNDARY_ZN);
+        case NEIGHBOR_YNZ0:
+            return (BOUNDARY_YN | BOUNDARY_Z0);
+        case NEIGHBOR_YNZN:
+            return (BOUNDARY_YN | BOUNDARY_ZN);
+        case NEIGHBOR_Z0X0:
+            return (BOUNDARY_Z0 | BOUNDARY_X0);
+        case NEIGHBOR_Z0XN:
+            return (BOUNDARY_Z0 | BOUNDARY_XN);
+        case NEIGHBOR_ZNX0:
+            return (BOUNDARY_ZN | BOUNDARY_X0);
+        case NEIGHBOR_ZNXN:
+            return (BOUNDARY_ZN | BOUNDARY_XN);
+        case NEIGHBOR_X0Y0Z0:
+            return (BOUNDARY_X0 | BOUNDARY_Y0 | BOUNDARY_Z0);
+        case NEIGHBOR_X0Y0ZN:
+            return (BOUNDARY_X0 | BOUNDARY_Y0 | BOUNDARY_ZN);
+        case NEIGHBOR_X0YNZ0:
+            return (BOUNDARY_X0 | BOUNDARY_YN | BOUNDARY_Z0);
+        case NEIGHBOR_X0YNZN:
+            return (BOUNDARY_X0 | BOUNDARY_YN | BOUNDARY_ZN);
+        case NEIGHBOR_XNY0Z0:
+            return (BOUNDARY_XN | BOUNDARY_Y0 | BOUNDARY_Z0);
+        case NEIGHBOR_XNY0ZN:
+            return (BOUNDARY_XN | BOUNDARY_Y0 | BOUNDARY_ZN);
+        case NEIGHBOR_XNYNZ0:
+            return (BOUNDARY_XN | BOUNDARY_YN | BOUNDARY_Z0);
+        case NEIGHBOR_XNYNZN:
+            return (BOUNDARY_XN | BOUNDARY_YN | BOUNDARY_ZN);
+        default:
+            MG_Assert(0);
+    }
+    return -1;
+}
+
+static inline int MG_neighbor_to_boundaries(int neighbor_flag)
+{
+    int boundary_flag = 0;
+    if (neighbor_flag & NEIGHBOR_ANY_X0)
+        boundary_flag |= BOUNDARY_X0;
+    if (neighbor_flag & NEIGHBOR_ANY_XN)
+        boundary_flag |= BOUNDARY_XN;
+    if (neighbor_flag & NEIGHBOR_ANY_Y0)
+        boundary_flag |= BOUNDARY_Y0;
+    if (neighbor_flag & NEIGHBOR_ANY_YN)
+        boundary_flag |= BOUNDARY_YN;
+    if (neighbor_flag & NEIGHBOR_ANY_Z0)
+        boundary_flag |= BOUNDARY_Z0;
+    if (neighbor_flag & NEIGHBOR_ANY_ZN)
+        boundary_flag |= BOUNDARY_ZN;
+    return boundary_flag;
+}
 
 #define ADJACENTS_2D5PT                                                        \
     {                                                                          \
-        BOUNDARY_X0, BOUNDARY_XN, BOUNDARY_Y0, BOUNDARY_YN                     \
+        NEIGHBOR_X0, NEIGHBOR_XN, NEIGHBOR_Y0, NEIGHBOR_YN                     \
     }
 #define ADJACENTS_2D9PT                                                        \
     {                                                                          \
-        BOUNDARY_X0, BOUNDARY_XN, BOUNDARY_Y0, BOUNDARY_YN, NEIGHBOR_X0Y0,     \
+        NEIGHBOR_X0, NEIGHBOR_XN, NEIGHBOR_Y0, NEIGHBOR_YN, NEIGHBOR_X0Y0,     \
             NEIGHBOR_X0YN, NEIGHBOR_XNY0, NEIGHBOR_XNYN                        \
     }
 #define ADJACENTS_3D7PT                                                        \
     {                                                                          \
-        BOUNDARY_X0, BOUNDARY_XN, BOUNDARY_Y0, BOUNDARY_YN, BOUNDARY_Z0,       \
-            BOUNDARY_ZN                                                        \
+        NEIGHBOR_X0, NEIGHBOR_XN, NEIGHBOR_Y0, NEIGHBOR_YN, NEIGHBOR_Z0,       \
+            NEIGHBOR_ZN                                                        \
     }
 #define ADJACENTS_3D27PT                                                       \
     {                                                                          \
-        BOUNDARY_X0, BOUNDARY_XN, BOUNDARY_Y0, BOUNDARY_YN, BOUNDARY_Z0,       \
-            BOUNDARY_ZN, NEIGHBOR_X0Y0, NEIGHBOR_X0YN, NEIGHBOR_XNY0,          \
+        NEIGHBOR_X0, NEIGHBOR_XN, NEIGHBOR_Y0, NEIGHBOR_YN, NEIGHBOR_Z0,       \
+            NEIGHBOR_ZN, NEIGHBOR_X0Y0, NEIGHBOR_X0YN, NEIGHBOR_XNY0,          \
             NEIGHBOR_XNYN, NEIGHBOR_Y0Z0, NEIGHBOR_Y0ZN, NEIGHBOR_YNZ0,        \
             NEIGHBOR_YNZN, NEIGHBOR_Z0X0, NEIGHBOR_Z0XN, NEIGHBOR_ZNX0,        \
             NEIGHBOR_ZNXN, NEIGHBOR_X0Y0Z0, NEIGHBOR_X0Y0ZN, NEIGHBOR_X0YNZ0,  \
@@ -213,11 +404,12 @@ typedef float MG_REAL;
             NEIGHBOR_XNYNZ0, NEIGHBOR_XNYNZN                                   \
     }
 
-static inline void MG_neighbor_to_sxsysz(int flag, int *x, int *y, int *z)
+static inline void MG_neighbor_to_sxsysz(int neighbor, int *x, int *y, int *z)
 {
-    *x = (flag & BOUNDARY_XN) ? 1 : ((flag & BOUNDARY_X0) ? -1 : 0);
-    *y = (flag & BOUNDARY_YN) ? 1 : ((flag & BOUNDARY_Y0) ? -1 : 0);
-    *z = (flag & BOUNDARY_ZN) ? 1 : ((flag & BOUNDARY_Z0) ? -1 : 0);
+    int boundary = MG_neighbor_to_boundary(neighbor);
+    *x = (boundary & BOUNDARY_XN) ? 1 : ((boundary & BOUNDARY_X0) ? -1 : 0);
+    *y = (boundary & BOUNDARY_YN) ? 1 : ((boundary & BOUNDARY_Y0) ? -1 : 0);
+    *z = (boundary & BOUNDARY_ZN) ? 1 : ((boundary & BOUNDARY_Z0) ? -1 : 0);
 }
 
 #define VALIDATE_TYPE_NONE 0x0
@@ -269,17 +461,18 @@ typedef struct StencilArg {
 typedef MG_ALIGNED struct BlockInfo {
     // Almost constant values.
     int xstart, xend, ystart, yend, zstart, zend;
-    int neighbor_flag; // Neighbor flag.
-    int boundary_flag; // Physical boundary condition flag.
-    int num_comms;     // First buffers: send / Later buffers: recv.
-    CommInfo *comms;   // Communicators this block needs to use.
-    int num_syncs;     // # of synchronizations
-    SyncInfo *syncs;   // Intra-process synchronization.
-    GridInfo *p_grid;  // Grid information to which this block belongs.
-    MG_REAL flux;      // Flux out of this block
-    int iter;          // Iteration.
-                       // iter % 2 == 0: values1 -> values2
-                       // iter % 2 == 1: values2 -> values1
+    int neighbor_flag;   // Flag of neighbors regarding communication.
+    int boundary_flag;   // Physical boundary condition flag.
+    int wraparound_flag; // Local warparound flag (for periodic condition).
+    int num_comms;       // First buffers: send / Later buffers: recv.
+    CommInfo *comms;     // Communicators this block needs to use.
+    int num_syncs;       // # of synchronizations
+    SyncInfo *syncs;     // Intra-process synchronization.
+    GridInfo *p_grid;    // Grid information to which this block belongs.
+    MG_REAL flux;        // Flux out of this block
+    int iter;            // Iteration.
+                         // iter % 2 == 0: values1 -> values2
+                         // iter % 2 == 1: values2 -> values1
 
     // Used for threading.
 #if MG_PARALLEL_TYPE & (MG_PARALLEL_TYPE_PTHREADS | MG_PARALLEL_TYPE_ARGOBOTS)
@@ -370,9 +563,10 @@ typedef struct Params {
     int comm_strategy; // MPI send/recv strategy.
 
     // Configurations: stencil problem
-    int stencil;   // Stencil to be applied
-    int numvars;   // Number of variables to be operated on.
-    int numtsteps; // Number of time steps per heat spike.
+    int stencil;     // Stencil to be applied
+    int numvars;     // Number of variables to be operated on.
+    int numtsteps;   // Number of time steps per heat spike.
+    int bc_periodic; // Boundary condition (1: periodic, 0: Dirichlet)
 
     // Configuration: debugging and verification options
     MG_REAL error_tol;     // Error tolerance
@@ -422,6 +616,11 @@ void MG_Stencil_thread(void *arg);
 MG_REAL MG_Process_boundary_conditions(const Params *p_params,
                                        BlockInfo *p_blk);
 void MG_Boundary_exchange(const Params *p_params, BlockInfo *p_blk);
+void MG_Wraparound(const Params *p_params, int wraparound_flag,
+                   MG_REAL *restrict grid, int nx, int ny, int nz, int xstart,
+                   int xend, int ystart, int yend, int zstart, int zend);
+void MG_Wraparound_blk(const Params *p_params, const BlockInfo *p_blk,
+                       MG_REAL *restrict grid);
 
 void MG_Pack_buffer(const Params *p_params, MG_REAL *grid, BlockInfo *p_blk);
 void MG_Unpack_buffer(const Params *p_params, MG_REAL *grid, BlockInfo *p_blk);
@@ -440,18 +639,6 @@ void MG_Thread_join(MG_thread_t *p_thread);
 void MG_Thread_free(MG_thread_t *p_thread);
 #endif
 
-void MG_Assert_impl(const char *cond, const char *file, int line);
-void MG_Error_impl(const char *error_msg, const char *file, int line);
-#define MG_Error(_error_msg)                                                   \
-    do {                                                                       \
-        MG_Error_impl(_error_msg, __FILE__, __LINE__);                         \
-    } while (0)
-#define MG_Assert(_cond)                                                       \
-    do {                                                                       \
-        if (!(_cond)) {                                                        \
-            MG_Assert_impl(#_cond, __FILE__, __LINE__);                        \
-        }                                                                      \
-    } while (0)
 void MG_Print_header(const Params *p_params);
 // Allocated memory can be released by "free()"
 void *MG_malloc(size_t size);

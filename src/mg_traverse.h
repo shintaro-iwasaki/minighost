@@ -30,342 +30,348 @@
 
 #include "mg.h"
 
-#define MG_TRAVERSE_NEIGHBORS(_p_params, _p_blk, _func, ...)                   \
+#define MG_TRAVERSE(_traverse_flag, _p_params, _xstart, _xend, _ystart, _yend, \
+                    _zstart, _zend, _func, ...)                                \
     do {                                                                       \
         const Params *p_params = (_p_params);                                  \
-        BlockInfo *p_blk = (_p_blk);                                           \
         size_t comm_index = 0;                                                 \
-        const int neighbor_flag = p_blk->neighbor_flag;                        \
+        const int xstart = (_xstart);                                          \
+        const int xend = (_xend);                                              \
+        const int ystart = (_ystart);                                          \
+        const int yend = (_yend);                                              \
+        const int zstart = (_zstart);                                          \
+        const int zend = (_zend);                                              \
+        const int traverse_flag = _traverse_flag;                              \
         const int check_diagonal = (p_params->stencil == MG_STENCIL_2D9PT) ||  \
                                    (p_params->stencil == MG_STENCIL_3D27PT);   \
-        if (neighbor_flag & BOUNDARY_ZN) {                                     \
-            const int ks = p_blk->zend;                                        \
+        if (traverse_flag & NEIGHBOR_ANY_ZN) {                                 \
+            const int ks = zend;                                               \
             const int ke = ks;                                                 \
-            const int ks_halo = p_blk->zend + 1;                               \
+            const int ks_halo = zend + 1;                                      \
             const int ke_halo = ks_halo;                                       \
-            if (check_diagonal && (neighbor_flag & BOUNDARY_YN)) {             \
-                const int js = p_blk->yend;                                    \
+            if (check_diagonal && (traverse_flag & NEIGHBOR_ANY_YN)) {         \
+                const int js = yend;                                           \
                 const int je = js;                                             \
-                const int js_halo = p_blk->yend + 1;                           \
+                const int js_halo = yend + 1;                                  \
                 const int je_halo = js_halo;                                   \
-                if (neighbor_flag & BOUNDARY_XN) {                             \
-                    const int is = p_blk->xend;                                \
+                if (traverse_flag & NEIGHBOR_XNYNZN) {                         \
+                    const int is = xend;                                       \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xend + 1;                       \
+                    const int is_halo = xend + 1;                              \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_XNYNZN, __VA_ARGS__);           \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_XNYNZN, __VA_ARGS__);                       \
                     comm_index++;                                              \
                 }                                                              \
-                if (neighbor_flag & BOUNDARY_X0) {                             \
-                    const int is = p_blk->xstart;                              \
+                if (traverse_flag & NEIGHBOR_X0YNZN) {                         \
+                    const int is = xstart;                                     \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xstart - 1;                     \
+                    const int is_halo = xstart - 1;                            \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_X0YNZN, __VA_ARGS__);           \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_X0YNZN, __VA_ARGS__);                       \
                     comm_index++;                                              \
                 }                                                              \
-                {                                                              \
-                    const int is = p_blk->xstart;                              \
-                    const int ie = p_blk->xend;                                \
-                    const int is_halo = p_blk->xstart;                         \
-                    const int ie_halo = p_blk->xend;                           \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_YNZN, __VA_ARGS__);             \
+                if (traverse_flag & NEIGHBOR_YNZN) {                           \
+                    const int is = xstart;                                     \
+                    const int ie = xend;                                       \
+                    const int is_halo = xstart;                                \
+                    const int ie_halo = xend;                                  \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_YNZN, __VA_ARGS__);                         \
                     comm_index++;                                              \
                 }                                                              \
             }                                                                  \
-            if (check_diagonal && (neighbor_flag & BOUNDARY_Y0)) {             \
-                const int js = p_blk->ystart;                                  \
+            if (check_diagonal && (traverse_flag & NEIGHBOR_ANY_Y0)) {         \
+                const int js = ystart;                                         \
                 const int je = js;                                             \
-                const int js_halo = p_blk->ystart - 1;                         \
+                const int js_halo = ystart - 1;                                \
                 const int je_halo = js_halo;                                   \
-                if (neighbor_flag & BOUNDARY_XN) {                             \
-                    const int is = p_blk->xend;                                \
+                if (traverse_flag & NEIGHBOR_XNY0ZN) {                         \
+                    const int is = xend;                                       \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xend + 1;                       \
+                    const int is_halo = xend + 1;                              \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_XNY0ZN, __VA_ARGS__);           \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_XNY0ZN, __VA_ARGS__);                       \
                     comm_index++;                                              \
                 }                                                              \
-                if (neighbor_flag & BOUNDARY_X0) {                             \
-                    const int is = p_blk->xstart;                              \
+                if (traverse_flag & NEIGHBOR_X0Y0ZN) {                         \
+                    const int is = xstart;                                     \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xstart - 1;                     \
+                    const int is_halo = xstart - 1;                            \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_X0Y0ZN, __VA_ARGS__);           \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_X0Y0ZN, __VA_ARGS__);                       \
                     comm_index++;                                              \
                 }                                                              \
-                {                                                              \
-                    const int is = p_blk->xstart;                              \
-                    const int ie = p_blk->xend;                                \
-                    const int is_halo = p_blk->xstart;                         \
-                    const int ie_halo = p_blk->xend;                           \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_Y0ZN, __VA_ARGS__);             \
+                if (traverse_flag & NEIGHBOR_Y0ZN) {                           \
+                    const int is = xstart;                                     \
+                    const int ie = xend;                                       \
+                    const int is_halo = xstart;                                \
+                    const int ie_halo = xend;                                  \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_Y0ZN, __VA_ARGS__);                         \
                     comm_index++;                                              \
                 }                                                              \
             }                                                                  \
             {                                                                  \
-                const int js = p_blk->ystart;                                  \
-                const int je = p_blk->yend;                                    \
-                const int js_halo = p_blk->ystart;                             \
-                const int je_halo = p_blk->yend;                               \
-                if (check_diagonal && (neighbor_flag & BOUNDARY_XN)) {         \
-                    const int is = p_blk->xend;                                \
+                const int js = ystart;                                         \
+                const int je = yend;                                           \
+                const int js_halo = ystart;                                    \
+                const int je_halo = yend;                                      \
+                if (check_diagonal && (traverse_flag & NEIGHBOR_ZNXN)) {       \
+                    const int is = xend;                                       \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xend + 1;                       \
+                    const int is_halo = xend + 1;                              \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_ZNXN, __VA_ARGS__);             \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_ZNXN, __VA_ARGS__);                         \
                     comm_index++;                                              \
                 }                                                              \
-                if (check_diagonal && (neighbor_flag & BOUNDARY_X0)) {         \
-                    const int is = p_blk->xstart;                              \
+                if (check_diagonal && (traverse_flag & NEIGHBOR_ZNX0)) {       \
+                    const int is = xstart;                                     \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xstart - 1;                     \
+                    const int is_halo = xstart - 1;                            \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_ZNX0, __VA_ARGS__);             \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_ZNX0, __VA_ARGS__);                         \
                     comm_index++;                                              \
                 }                                                              \
-                {                                                              \
-                    const int is = p_blk->xstart;                              \
-                    const int ie = p_blk->xend;                                \
-                    const int is_halo = p_blk->xstart;                         \
-                    const int ie_halo = p_blk->xend;                           \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_ZN, __VA_ARGS__);               \
+                if (traverse_flag & NEIGHBOR_ZN) {                             \
+                    const int is = xstart;                                     \
+                    const int ie = xend;                                       \
+                    const int is_halo = xstart;                                \
+                    const int ie_halo = xend;                                  \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_ZN, __VA_ARGS__);                           \
                     comm_index++;                                              \
                 }                                                              \
             }                                                                  \
         }                                                                      \
-        if (neighbor_flag & BOUNDARY_Z0) {                                     \
-            const int ks = p_blk->zstart;                                      \
+        if (traverse_flag & NEIGHBOR_ANY_Z0) {                                 \
+            const int ks = zstart;                                             \
             const int ke = ks;                                                 \
-            const int ks_halo = p_blk->zstart - 1;                             \
+            const int ks_halo = zstart - 1;                                    \
             const int ke_halo = ks_halo;                                       \
-            if (check_diagonal && (neighbor_flag & BOUNDARY_YN)) {             \
-                const int js = p_blk->yend;                                    \
+            if (check_diagonal && (traverse_flag & NEIGHBOR_ANY_YN)) {         \
+                const int js = yend;                                           \
                 const int je = js;                                             \
-                const int js_halo = p_blk->yend + 1;                           \
+                const int js_halo = yend + 1;                                  \
                 const int je_halo = js_halo;                                   \
-                if (neighbor_flag & BOUNDARY_XN) {                             \
-                    const int is = p_blk->xend;                                \
+                if (traverse_flag & NEIGHBOR_XNYNZ0) {                         \
+                    const int is = xend;                                       \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xend + 1;                       \
+                    const int is_halo = xend + 1;                              \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_XNYNZ0, __VA_ARGS__);           \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_XNYNZ0, __VA_ARGS__);                       \
                     comm_index++;                                              \
                 }                                                              \
-                if (neighbor_flag & BOUNDARY_X0) {                             \
-                    const int is = p_blk->xstart;                              \
+                if (traverse_flag & NEIGHBOR_X0YNZ0) {                         \
+                    const int is = xstart;                                     \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xstart - 1;                     \
+                    const int is_halo = xstart - 1;                            \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_X0YNZ0, __VA_ARGS__);           \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_X0YNZ0, __VA_ARGS__);                       \
                     comm_index++;                                              \
                 }                                                              \
-                {                                                              \
-                    const int is = p_blk->xstart;                              \
-                    const int ie = p_blk->xend;                                \
-                    const int is_halo = p_blk->xstart;                         \
-                    const int ie_halo = p_blk->xend;                           \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_YNZ0, __VA_ARGS__);             \
+                if (traverse_flag & NEIGHBOR_YNZ0) {                           \
+                    const int is = xstart;                                     \
+                    const int ie = xend;                                       \
+                    const int is_halo = xstart;                                \
+                    const int ie_halo = xend;                                  \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_YNZ0, __VA_ARGS__);                         \
                     comm_index++;                                              \
                 }                                                              \
             }                                                                  \
-            if (check_diagonal && (neighbor_flag & BOUNDARY_Y0)) {             \
-                const int js = p_blk->ystart;                                  \
+            if (check_diagonal && (traverse_flag & NEIGHBOR_ANY_Y0)) {         \
+                const int js = ystart;                                         \
                 const int je = js;                                             \
-                const int js_halo = p_blk->ystart - 1;                         \
+                const int js_halo = ystart - 1;                                \
                 const int je_halo = js_halo;                                   \
-                if (neighbor_flag & BOUNDARY_XN) {                             \
-                    const int is = p_blk->xend;                                \
+                if (traverse_flag & NEIGHBOR_XNY0Z0) {                         \
+                    const int is = xend;                                       \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xend + 1;                       \
+                    const int is_halo = xend + 1;                              \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_XNY0Z0, __VA_ARGS__);           \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_XNY0Z0, __VA_ARGS__);                       \
                     comm_index++;                                              \
                 }                                                              \
-                if (neighbor_flag & BOUNDARY_X0) {                             \
-                    const int is = p_blk->xstart;                              \
+                if (traverse_flag & NEIGHBOR_X0Y0Z0) {                         \
+                    const int is = xstart;                                     \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xstart - 1;                     \
+                    const int is_halo = xstart - 1;                            \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_X0Y0Z0, __VA_ARGS__);           \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_X0Y0Z0, __VA_ARGS__);                       \
                     comm_index++;                                              \
                 }                                                              \
-                {                                                              \
-                    const int is = p_blk->xstart;                              \
-                    const int ie = p_blk->xend;                                \
-                    const int is_halo = p_blk->xstart;                         \
-                    const int ie_halo = p_blk->xend;                           \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_Y0Z0, __VA_ARGS__);             \
+                if (traverse_flag & NEIGHBOR_Y0Z0) {                           \
+                    const int is = xstart;                                     \
+                    const int ie = xend;                                       \
+                    const int is_halo = xstart;                                \
+                    const int ie_halo = xend;                                  \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_Y0Z0, __VA_ARGS__);                         \
                     comm_index++;                                              \
                 }                                                              \
             }                                                                  \
             {                                                                  \
-                const int js = p_blk->ystart;                                  \
-                const int je = p_blk->yend;                                    \
-                const int js_halo = p_blk->ystart;                             \
-                const int je_halo = p_blk->yend;                               \
-                if (check_diagonal && (neighbor_flag & BOUNDARY_XN)) {         \
-                    const int is = p_blk->xend;                                \
+                const int js = ystart;                                         \
+                const int je = yend;                                           \
+                const int js_halo = ystart;                                    \
+                const int je_halo = yend;                                      \
+                if (check_diagonal && (traverse_flag & NEIGHBOR_Z0XN)) {       \
+                    const int is = xend;                                       \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xend + 1;                       \
+                    const int is_halo = xend + 1;                              \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_Z0XN, __VA_ARGS__);             \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_Z0XN, __VA_ARGS__);                         \
                     comm_index++;                                              \
                 }                                                              \
-                if (check_diagonal && (neighbor_flag & BOUNDARY_X0)) {         \
-                    const int is = p_blk->xstart;                              \
+                if (check_diagonal && (traverse_flag & NEIGHBOR_Z0X0)) {       \
+                    const int is = xstart;                                     \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xstart - 1;                     \
+                    const int is_halo = xstart - 1;                            \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_Z0X0, __VA_ARGS__);             \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_Z0X0, __VA_ARGS__);                         \
                     comm_index++;                                              \
                 }                                                              \
-                {                                                              \
-                    const int is = p_blk->xstart;                              \
-                    const int ie = p_blk->xend;                                \
-                    const int is_halo = p_blk->xstart;                         \
-                    const int ie_halo = p_blk->xend;                           \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_Z0, __VA_ARGS__);               \
+                if (traverse_flag & NEIGHBOR_Z0) {                             \
+                    const int is = xstart;                                     \
+                    const int ie = xend;                                       \
+                    const int is_halo = xstart;                                \
+                    const int ie_halo = xend;                                  \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_Z0, __VA_ARGS__);                           \
                     comm_index++;                                              \
                 }                                                              \
             }                                                                  \
         }                                                                      \
         {                                                                      \
-            const int ks = p_blk->zstart;                                      \
-            const int ke = p_blk->zend;                                        \
-            const int ks_halo = p_blk->zstart;                                 \
-            const int ke_halo = p_blk->zend;                                   \
-            if (neighbor_flag & BOUNDARY_YN) {                                 \
-                const int js = p_blk->yend;                                    \
+            const int ks = zstart;                                             \
+            const int ke = zend;                                               \
+            const int ks_halo = zstart;                                        \
+            const int ke_halo = zend;                                          \
+            if (traverse_flag & NEIGHBOR_ANY_YN) {                             \
+                const int js = yend;                                           \
                 const int je = js;                                             \
-                const int js_halo = p_blk->yend + 1;                           \
+                const int js_halo = yend + 1;                                  \
                 const int je_halo = js_halo;                                   \
-                if (check_diagonal && (neighbor_flag & BOUNDARY_XN)) {         \
-                    const int is = p_blk->xend;                                \
+                if (check_diagonal && (traverse_flag & NEIGHBOR_XNYN)) {       \
+                    const int is = xend;                                       \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xend + 1;                       \
+                    const int is_halo = xend + 1;                              \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_XNYN, __VA_ARGS__);             \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_XNYN, __VA_ARGS__);                         \
                     comm_index++;                                              \
                 }                                                              \
-                if (check_diagonal && (neighbor_flag & BOUNDARY_X0)) {         \
-                    const int is = p_blk->xstart;                              \
+                if (check_diagonal && (traverse_flag & NEIGHBOR_X0YN)) {       \
+                    const int is = xstart;                                     \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xstart - 1;                     \
+                    const int is_halo = xstart - 1;                            \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_X0YN, __VA_ARGS__);             \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_X0YN, __VA_ARGS__);                         \
                     comm_index++;                                              \
                 }                                                              \
-                {                                                              \
-                    const int is = p_blk->xstart;                              \
-                    const int ie = p_blk->xend;                                \
-                    const int is_halo = p_blk->xstart;                         \
-                    const int ie_halo = p_blk->xend;                           \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_YN, __VA_ARGS__);               \
+                if (traverse_flag & NEIGHBOR_YN) {                             \
+                    const int is = xstart;                                     \
+                    const int ie = xend;                                       \
+                    const int is_halo = xstart;                                \
+                    const int ie_halo = xend;                                  \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_YN, __VA_ARGS__);                           \
                     comm_index++;                                              \
                 }                                                              \
             }                                                                  \
-            if (neighbor_flag & BOUNDARY_Y0) {                                 \
-                const int js = p_blk->ystart;                                  \
+            if (traverse_flag & NEIGHBOR_ANY_Y0) {                             \
+                const int js = ystart;                                         \
                 const int je = js;                                             \
-                const int js_halo = p_blk->ystart - 1;                         \
+                const int js_halo = ystart - 1;                                \
                 const int je_halo = js_halo;                                   \
-                if (check_diagonal && (neighbor_flag & BOUNDARY_XN)) {         \
-                    const int is = p_blk->xend;                                \
+                if (check_diagonal && (traverse_flag & NEIGHBOR_XNY0)) {       \
+                    const int is = xend;                                       \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xend + 1;                       \
+                    const int is_halo = xend + 1;                              \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_XNY0, __VA_ARGS__);             \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_XNY0, __VA_ARGS__);                         \
                     comm_index++;                                              \
                 }                                                              \
-                if (check_diagonal && (neighbor_flag & BOUNDARY_X0)) {         \
-                    const int is = p_blk->xstart;                              \
+                if (check_diagonal && (traverse_flag & NEIGHBOR_X0Y0)) {       \
+                    const int is = xstart;                                     \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xstart - 1;                     \
+                    const int is_halo = xstart - 1;                            \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_X0Y0, __VA_ARGS__);             \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_X0Y0, __VA_ARGS__);                         \
                     comm_index++;                                              \
                 }                                                              \
-                {                                                              \
-                    const int is = p_blk->xstart;                              \
-                    const int ie = p_blk->xend;                                \
-                    const int is_halo = p_blk->xstart;                         \
-                    const int ie_halo = p_blk->xend;                           \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_Y0, __VA_ARGS__);               \
+                if (traverse_flag & NEIGHBOR_Y0) {                             \
+                    const int is = xstart;                                     \
+                    const int ie = xend;                                       \
+                    const int is_halo = xstart;                                \
+                    const int ie_halo = xend;                                  \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_Y0, __VA_ARGS__);                           \
                     comm_index++;                                              \
                 }                                                              \
             }                                                                  \
             {                                                                  \
-                const int js = p_blk->ystart;                                  \
-                const int je = p_blk->yend;                                    \
-                const int js_halo = p_blk->ystart;                             \
-                const int je_halo = p_blk->yend;                               \
-                if (neighbor_flag & BOUNDARY_XN) {                             \
-                    const int is = p_blk->xend;                                \
+                const int js = ystart;                                         \
+                const int je = yend;                                           \
+                const int js_halo = ystart;                                    \
+                const int je_halo = yend;                                      \
+                if (traverse_flag & NEIGHBOR_XN) {                             \
+                    const int is = xend;                                       \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xend + 1;                       \
+                    const int is_halo = xend + 1;                              \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_XN, __VA_ARGS__);               \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_XN, __VA_ARGS__);                           \
                     comm_index++;                                              \
                 }                                                              \
-                if (neighbor_flag & BOUNDARY_X0) {                             \
-                    const int is = p_blk->xstart;                              \
+                if (traverse_flag & NEIGHBOR_X0) {                             \
+                    const int is = xstart;                                     \
                     const int ie = is;                                         \
-                    const int is_halo = p_blk->xstart - 1;                     \
+                    const int is_halo = xstart - 1;                            \
                     const int ie_halo = is_halo;                               \
-                    _func(p_params, p_blk, is, ie, js, je, ks, ke, is_halo,    \
-                          ie_halo, js_halo, je_halo, ks_halo, ke_halo,         \
-                          comm_index, NEIGHBOR_X0, __VA_ARGS__);               \
+                    _func(p_params, is, ie, js, je, ks, ke, is_halo, ie_halo,  \
+                          js_halo, je_halo, ks_halo, ke_halo, comm_index,      \
+                          NEIGHBOR_X0, __VA_ARGS__);                           \
                     comm_index++;                                              \
                 }                                                              \
                 {                                                              \

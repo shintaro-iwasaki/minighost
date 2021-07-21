@@ -16,7 +16,6 @@ minighost_SOURCES = main.c \
 					mg_kernel.c \
 					mg_pack_unpack.c \
 					mg_stencil.c \
-					mg_thread.c \
 					mg_thread_argobots.c \
 					mg_thread_pthread.c \
 					mg_util.c \

@@ -50,6 +50,13 @@ void MG_Grid_init(const Params *p_params, GridInfo *p_grid)
     MG_Assert(p_grid->values2);
     fill_grid(p_params, p_grid);
 
+    if (p_params->bc_periodic) {
+        // Set up periodic boundaries.
+        int wraparound_flag = 0;
+        MG_Wraparound(p_params, NEIGHBOR_ALL, p_grid->values1, nx, ny, nz, 1,
+                      nx, 1, ny, 1, nz);
+    }
+
     // Compute the total source.
     MG_REAL local_source = 0.0;
     for (int k = 1; k <= nz; k++) {
@@ -177,12 +184,23 @@ static void debug_grid_init(const Params *p_params, DebugGridInfo *p_debug)
         }
     }
     free(tmp_values);
+
+    if (p_params->bc_periodic) {
+        // Set up periodic boundaries.
+        MG_Wraparound(p_params, NEIGHBOR_ALL, p_debug->p_values[0], gnx, gny,
+                      gnz, 1, gnx, 1, gny, 1, gnz);
+    }
     // Compute stencil values in advance.
     for (int step = 0; step < p_params->numtsteps; step++) {
         MG_REAL *grid_in = p_debug->p_values[step];
         MG_REAL *grid_out = p_debug->p_values[step + 1];
         MG_Stencil_kernel(grid_in, grid_out, gnx, gny, gnz, 1, gnx, 1, gny, 1,
                           gnz, p_params->stencil);
+        if (p_params->bc_periodic) {
+            // Apply periodic boundaries.
+            MG_Wraparound(p_params, NEIGHBOR_ALL, p_debug->p_values[step + 1],
+                          gnx, gny, gnz, 1, gnx, 1, gny, 1, gnz);
+        }
     }
 }
 
@@ -210,6 +228,9 @@ static void block_init(const Params *p_params, GridInfo *p_grid)
     const int npx = p_params->npx;
     const int npy = p_params->npy;
     const int npz = p_params->npz;
+    const int nblksx = p_params->nblksx;
+    const int nblksy = p_params->nblksy;
+    const int nblksz = p_params->nblksz;
     //
     // Apply mirroring to assign IDs regarding neighbor processes.
     // This is known to be a good idea to assign VCIs.
@@ -225,20 +246,19 @@ static void block_init(const Params *p_params, GridInfo *p_grid)
     //          4 5 6
     //          1 2 3
     //
-    for (int kk = 0; kk < p_params->nblksz; kk++) {
-        const int k = (pz % 2) ? (p_params->nblksz - 1 - kk) : kk;
+    for (int kk = 0; kk < nblksz; kk++) {
+        const int k = (pz % 2) ? (nblksz - 1 - kk) : kk;
         const int zstart = k * p_params->ncblkz + 1;
         const int zend = (k + 1) * p_params->ncblkz;
-        for (int jj = 0; jj < p_params->nblksy; jj++) {
-            const int j = (py % 2) ? (p_params->nblksy - 1 - jj) : jj;
+        for (int jj = 0; jj < nblksy; jj++) {
+            const int j = (py % 2) ? (nblksy - 1 - jj) : jj;
             const int ystart = j * p_params->ncblky + 1;
             const int yend = (j + 1) * p_params->ncblky;
-            for (int ii = 0; ii < p_params->nblksx; ii++) {
-                const int i = (px % 2) ? (p_params->nblksx - 1 - ii) : ii;
+            for (int ii = 0; ii < nblksx; ii++) {
+                const int i = (px % 2) ? (nblksx - 1 - ii) : ii;
                 const int xstart = i * p_params->ncblkx + 1;
                 const int xend = (i + 1) * p_params->ncblkx;
-                const int blkid =
-                    ii + p_params->nblksx * (jj + p_params->nblksy * kk);
+                const int blkid = ii + nblksx * (jj + nblksy * kk);
                 blks[blkid].id = blkid;
                 blks[blkid].iter = 0;
                 blks[blkid].iter_sync = 0;
@@ -247,53 +267,116 @@ static void block_init(const Params *p_params, GridInfo *p_grid)
                 blks[blkid].blkz = k;
                 int boundary_flag = 0;
                 int neighbor_flag = 0;
-                if (i == 0) {
-                    if (p_params->px == 0) {
-                        boundary_flag |= BOUNDARY_X0;
-                    } else {
-                        neighbor_flag |= BOUNDARY_X0;
-                    }
-                }
-                if (i == p_params->nblksx - 1) {
-                    if (p_params->px == p_params->npx - 1) {
-                        boundary_flag |= BOUNDARY_XN;
-                    } else {
-                        neighbor_flag |= BOUNDARY_XN;
-                    }
-                }
-                if (j == 0) {
-                    if (p_params->py == 0) {
-                        boundary_flag |= BOUNDARY_Y0;
-                    } else {
-                        neighbor_flag |= BOUNDARY_Y0;
-                    }
-                }
-                if (j == p_params->nblksy - 1) {
-                    if (p_params->py == p_params->npy - 1) {
-                        boundary_flag |= BOUNDARY_YN;
-                    } else {
-                        neighbor_flag |= BOUNDARY_YN;
-                    }
-                }
-                if (p_params->stencil == MG_STENCIL_3D7PT ||
-                    p_params->stencil == MG_STENCIL_3D27PT) {
-                    if (k == 0) {
-                        if (p_params->pz == 0) {
-                            boundary_flag |= BOUNDARY_Z0;
+                int wraparound_flag = 0;
+                if (p_params->bc_periodic == 0) {
+                    // Set up the boundary flag.
+                    int local_boundary_flag = 0;
+                    if (i == 0) {
+                        if (p_params->px == 0) {
+                            boundary_flag |= BOUNDARY_X0;
                         } else {
-                            neighbor_flag |= BOUNDARY_Z0;
+                            local_boundary_flag |= BOUNDARY_X0;
                         }
                     }
-                    if (k == p_params->nblksz - 1) {
-                        if (p_params->pz == p_params->npz - 1) {
-                            boundary_flag |= BOUNDARY_ZN;
+                    if (i == nblksx - 1) {
+                        if (p_params->px == p_params->npx - 1) {
+                            boundary_flag |= BOUNDARY_XN;
                         } else {
-                            neighbor_flag |= BOUNDARY_ZN;
+                            local_boundary_flag |= BOUNDARY_XN;
                         }
                     }
+                    if (j == 0) {
+                        if (p_params->py == 0) {
+                            boundary_flag |= BOUNDARY_Y0;
+                        } else {
+                            local_boundary_flag |= BOUNDARY_Y0;
+                        }
+                    }
+                    if (j == nblksy - 1) {
+                        if (p_params->py == p_params->npy - 1) {
+                            boundary_flag |= BOUNDARY_YN;
+                        } else {
+                            local_boundary_flag |= BOUNDARY_YN;
+                        }
+                    }
+                    if (p_params->stencil == MG_STENCIL_3D7PT ||
+                        p_params->stencil == MG_STENCIL_3D27PT) {
+                        if (k == 0) {
+                            if (p_params->pz == 0) {
+                                boundary_flag |= BOUNDARY_Z0;
+                            } else {
+                                local_boundary_flag |= BOUNDARY_Z0;
+                            }
+                        }
+                        if (k == nblksz - 1) {
+                            if (p_params->pz == p_params->npz - 1) {
+                                boundary_flag |= BOUNDARY_ZN;
+                            } else {
+                                local_boundary_flag |= BOUNDARY_ZN;
+                            }
+                        }
+                    }
+                    neighbor_flag =
+                        MG_boundary_to_neighbors(local_boundary_flag,
+                                                 p_params->stencil ==
+                                                         MG_STENCIL_2D9PT ||
+                                                     p_params->stencil ==
+                                                         MG_STENCIL_3D27PT);
+                } else {
+                    // p_params->bc_periodic == 1
+                    int local_boundary_flag = 0;
+                    int wraparound_boundary_flag = 0;
+                    if (i == 0) {
+                        local_boundary_flag |= BOUNDARY_X0;
+                        if (p_params->npx == 1)
+                            wraparound_boundary_flag |= BOUNDARY_X0;
+                    }
+                    if (i == nblksx - 1) {
+                        local_boundary_flag |= BOUNDARY_XN;
+                        if (p_params->npx == 1)
+                            wraparound_boundary_flag |= BOUNDARY_XN;
+                    }
+                    if (j == 0) {
+                        local_boundary_flag |= BOUNDARY_Y0;
+                        if (p_params->npy == 1)
+                            wraparound_boundary_flag |= BOUNDARY_Y0;
+                    }
+                    if (j == nblksy - 1) {
+                        local_boundary_flag |= BOUNDARY_YN;
+                        if (p_params->npy == 1)
+                            wraparound_boundary_flag |= BOUNDARY_YN;
+                    }
+                    if (p_params->stencil == MG_STENCIL_3D7PT ||
+                        p_params->stencil == MG_STENCIL_3D27PT) {
+                        if (k == 0) {
+                            local_boundary_flag |= BOUNDARY_Z0;
+                            if (p_params->npz == 1)
+                                wraparound_boundary_flag |= BOUNDARY_Z0;
+                        }
+                        if (k == nblksz - 1) {
+                            local_boundary_flag |= BOUNDARY_ZN;
+                            if (p_params->npz == 1)
+                                wraparound_boundary_flag |= BOUNDARY_ZN;
+                        }
+                    }
+                    wraparound_flag =
+                        MG_boundary_to_neighbors(wraparound_boundary_flag,
+                                                 p_params->stencil ==
+                                                         MG_STENCIL_2D9PT ||
+                                                     p_params->stencil ==
+                                                         MG_STENCIL_3D27PT);
+                    int neighbor_wraparound_flag =
+                        MG_boundary_to_neighbors(local_boundary_flag,
+                                                 p_params->stencil ==
+                                                         MG_STENCIL_2D9PT ||
+                                                     p_params->stencil ==
+                                                         MG_STENCIL_3D27PT);
+                    neighbor_flag =
+                        neighbor_wraparound_flag & (~wraparound_flag);
                 }
                 blks[blkid].boundary_flag = boundary_flag;
                 blks[blkid].neighbor_flag = neighbor_flag;
+                blks[blkid].wraparound_flag = wraparound_flag;
 
                 // Set offsets into variables.
                 blks[blkid].xstart = xstart;
@@ -358,10 +441,12 @@ static void block_init(const Params *p_params, GridInfo *p_grid)
                                   : num_adjacents_3d27pt));
             for (int adjacent_i = 0; adjacent_i < num_adjacents; adjacent_i++) {
                 int adjacent = adjacents[adjacent_i];
-                // If adjacent is neither boundary nor neighbor, a local block
-                // exists.
-                if ((adjacent & p_blk->boundary_flag) ||
-                    (adjacent & p_blk->neighbor_flag))
+                // If adjacent is neither boundary nor neighbor, a local
+                // block exists.
+                if ((MG_neighbor_to_boundary(adjacent) &
+                     p_blk->boundary_flag) ||
+                    (MG_neighbor_to_boundary(adjacent) &
+                     MG_neighbor_to_boundaries(p_blk->neighbor_flag)))
                     continue;
                 // This block is next to a local block (adjacent).
                 int x, y, z;
@@ -369,22 +454,29 @@ static void block_init(const Params *p_params, GridInfo *p_grid)
                 // Because of the mirrored placement, pointer computation is
                 // a bit complicated.
                 const int adjacent_blkxi =
-                    px % 2 ? (p_params->nblksx - 1 - (p_blk->blkx + x))
-                           : (p_blk->blkx + x);
+                    ((px % 2 ? (nblksx - 1 - (p_blk->blkx + x))
+                             : (p_blk->blkx + x)) +
+                     nblksx) %
+                    nblksx;
                 const int adjacent_blkyi =
-                    py % 2 ? (p_params->nblksy - 1 - (p_blk->blky + y))
-                           : (p_blk->blky + y);
+                    ((py % 2 ? (nblksy - 1 - (p_blk->blky + y))
+                             : (p_blk->blky + y)) +
+                     nblksy) %
+                    nblksy;
                 const int adjacent_blkzi =
-                    pz % 2 ? (p_params->nblksz - 1 - (p_blk->blkz + z))
-                           : (p_blk->blkz + z);
+                    ((pz % 2 ? (nblksz - 1 - (p_blk->blkz + z))
+                             : (p_blk->blkz + z)) +
+                     nblksz) %
+                    nblksz;
                 BlockInfo *p_adjacent_blk =
                     &blks[adjacent_blkxi +
-                          p_params->nblksx *
-                              (adjacent_blkyi +
-                               p_params->nblksy * adjacent_blkzi)];
-                MG_Assert(p_adjacent_blk->blkx == p_blk->blkx + x);
-                MG_Assert(p_adjacent_blk->blky == p_blk->blky + y);
-                MG_Assert(p_adjacent_blk->blkz == p_blk->blkz + z);
+                          nblksx * (adjacent_blkyi + nblksy * adjacent_blkzi)];
+                MG_Assert(p_adjacent_blk->blkx ==
+                          (p_blk->blkx + x + nblksx) % nblksx);
+                MG_Assert(p_adjacent_blk->blky ==
+                          (p_blk->blky + y + nblksy) % nblksy);
+                MG_Assert(p_adjacent_blk->blkz ==
+                          (p_blk->blkz + z + nblksz) % nblksz);
                 sync_blks[num_syncs++] = p_adjacent_blk;
             }
         }
@@ -408,9 +500,17 @@ static void block_init(const Params *p_params, GridInfo *p_grid)
                 p_comm->neighbor_flag = counter.neighbor_flags[i];
                 int x, y, z;
                 MG_neighbor_to_sxsysz(p_comm->neighbor_flag, &x, &y, &z);
-                p_comm->rank = MG_pxpypz_to_world_rank(npx, npy, npz, px + x,
-                                                       py + y, pz + z);
-                p_comm->tag = p_blk->id;
+                p_comm->rank =
+                    MG_pxpypz_to_world_rank(npx, npy, npz, (npx + px + x) % npx,
+                                            (npy + py + y) % npy,
+                                            (npz + pz + z) % npz);
+                // Use different tag for direction.
+                const int tag_dir_x = (1 - is_unpack * 2) * x; // -1, 0, 1
+                const int tag_dir_y = (1 - is_unpack * 2) * y;
+                const int tag_dir_z = (1 - is_unpack * 2) * z;
+                p_comm->tag = p_blk->id * 27 +
+                              ((tag_dir_z + 1) * 3 + (tag_dir_y + 1)) * 3 +
+                              (tag_dir_x + 1);
                 buffer +=
                     MG_get_aligned(counter.buffer_lens[i] * sizeof(MG_REAL));
             }
@@ -461,12 +561,12 @@ static void block_finalize(const Params *p_params, GridInfo *p_grid)
     }
 }
 
-static void create_block_count_size_f(const Params *p_params, BlockInfo *p_blk,
-                                      int is, int ie, int js, int je, int ks,
-                                      int ke, int is_halo, int ie_halo,
-                                      int js_halo, int je_halo, int ks_halo,
-                                      int ke_halo, size_t comm_index,
-                                      int neighbor_flag,
+static void create_block_count_size_f(const Params *p_params, int is, int ie,
+                                      int js, int je, int ks, int ke,
+                                      int is_halo, int ie_halo, int js_halo,
+                                      int je_halo, int ks_halo, int ke_halo,
+                                      size_t comm_index, int neighbor_flag,
+                                      BlockInfo *p_blk,
                                       create_block_count_size_arg_t *p_arg)
 {
     p_arg->buffer_lens[comm_index] =
@@ -479,6 +579,8 @@ static void create_block_count_size(const Params *p_params_arg,
                                     BlockInfo *p_blk_arg,
                                     create_block_count_size_arg_t *p_func_arg)
 {
-    MG_TRAVERSE_NEIGHBORS(p_params_arg, p_blk_arg, create_block_count_size_f,
-                          p_func_arg);
+    MG_TRAVERSE(p_blk_arg->neighbor_flag, p_params_arg, p_blk_arg->xstart,
+                p_blk_arg->xend, p_blk_arg->ystart, p_blk_arg->yend,
+                p_blk_arg->zstart, p_blk_arg->zend, create_block_count_size_f,
+                p_blk_arg, p_func_arg);
 }

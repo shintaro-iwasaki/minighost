@@ -52,11 +52,13 @@ void main_kernel(void *main_arg)
     for (int ivar = 0; ivar < params.numvars; ivar++) {
         GridInfo *p_grid = &grids[ivar];
         MG_Grid_init(&params, p_grid);
+        MG_Validate_results(&params, p_grid, 0);
     }
 
     // Main kernel.
     double start_time = 0.0;
-    const int warmup_steps = 3;
+    const int warmup_steps =
+        (params.check_answer_freq < 3) ? params.check_answer_freq : 3;
     for (int tstep = 0; tstep < params.numtsteps;
          tstep += ((tstep == 0) ? warmup_steps : params.check_answer_freq)) {
         const int inc_steps =

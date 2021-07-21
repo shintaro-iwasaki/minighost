@@ -89,7 +89,6 @@ void MG_Stencil(const Params *p_params, BlockInfo *p_blk)
         grid_in = p_grid->values2;
         grid_out = p_grid->values1;
     }
-
     // Apply stencil.
     if (p_params->exec_type & MG_EXEC_TYPE_COPYCOMP) {
         kernel_copy(grid_in, grid_out, p_params->nx, p_params->ny, p_params->nz,
@@ -100,6 +99,10 @@ void MG_Stencil(const Params *p_params, BlockInfo *p_blk)
                           p_params->nz, p_blk->xstart, p_blk->xend,
                           p_blk->ystart, p_blk->yend, p_blk->zstart,
                           p_blk->zend, p_params->stencil);
+    }
+    // Apply wraparound (needed for periodic boundaries)
+    if (p_blk->wraparound_flag) {
+        MG_Wraparound_blk(p_params, p_blk, grid_out);
     }
 }
 
